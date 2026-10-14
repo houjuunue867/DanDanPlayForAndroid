@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 外部存储公共目录：/sdcard/DanDanPlay/logs -->
+    <external-path
+        name="dandanplay_log_external"
+        path="DanDanPlay/logs/" />
+    <!-- 应用外部私有目录：/sdcard/Android/data/包名/files/logs -->
+    <external-files-path
+        name="dandanplay_log_external_files"
+        path="logs/" />
+    <!-- 应用内部私有目录：/data/data/包名/files/logs -->
+    <files-path
+        name="dandanplay_log_inner"
+        path="logs/" />
+</paths>
