@@ -62,11 +62,9 @@ class SmbPlayServer private constructor() : NanoHTTPD(randomPort()) {
                 "文件=${storageFile.fileName()}, 文件长度=${storageFile.fileLength()}"
         )
 
-        //关闭之前打开的数据流
-        if (mInputStream != null) {
-            AppLog.w(LOG_TAG, "关闭上一次请求遗留的数据流（多个请求会互相影响）")
-            IOUtils.closeIO(mInputStream)
-        }
+        //每个请求都使用独立的数据流：不能再去关闭上一个请求的流，
+        //否则会把另一个连接正在读取的流关掉，播放器就会拿到不完整数据。
+        //每个响应发送完毕后，由 NanoHTTPD 自动关闭它自己的数据流。
 
         //重新打开数据流，重要，否则无法设置offset
         val inputStream = getInputStream(storage, storageFile)
@@ -109,38 +107,54 @@ class SmbPlayServer private constructor() : NanoHTTPD(randomPort()) {
     ): Response {
         val start = rangeArray[0]
         val end = rangeArray[1]
-        try {
-            //设置Offset
-            inputStream.skip(start)
-        } catch (e: IOException) {
-            AppLog.e(LOG_TAG, "跳过 SMB 数据流字节失败: start=$start", e)
-            e.printStackTrace()
-        }
+        //本次响应真正要发送的字节数。
+        //注意：这里曾经错用了整个文件长度（rangeArray[2]），使 Content-Length 多于实际可发送的
+        //字节数，播放器读到“数据不足”（读超时 / 提前 EOF）就会中断播放。
+        val responseLength = end - start + 1
 
-        //期望发送的字节数，用于排查响应头是否正确
-        val expectLength = end - start + 1
-        if (rangeArray[2] != expectLength) {
-            AppLog.w(
-                LOG_TAG,
-                "Range 响应长度不匹配: start=$start, end=$end, " +
-                    "Content-Length 使用的是=${rangeArray[2]}, 实际应发送=$expectLength, 文件长度=$sourceLength"
-            )
-        }
-        AppLog.i(LOG_TAG, "返回 206: Range=$start-$end, Content-Length=${rangeArray[2]}")
+        //设置Offset
+        skipFully(inputStream, start)
 
-        //响应内容
-        val response = newFixedLengthResponse(
+        AppLog.i(LOG_TAG, "返回 206: Range=$start-$end, Content-Length=$responseLength")
+
+        //响应内容：长度必须是 responseLength，NanoHTTPD 会据此输出 Content-Length
+        return newFixedLengthResponse(
             Response.Status.PARTIAL_CONTENT,
             mContentType,
             inputStream,
-            sourceLength
-        )
-        //添加响应头
-        val contentRange = "bytes $start-$end/$sourceLength"
-        response.addHeader("Accept-Ranges", "bytes")
-        response.addHeader("Content-Range", contentRange)
-        response.addHeader("Content-Length", rangeArray[2].toString())
-        return response
+            responseLength
+        ).apply {
+            //添加响应头（不要再手写 Content-Length，否则会出现重复响应头）
+            addHeader("Accept-Ranges", "bytes")
+            addHeader("Content-Range", "bytes $start-$end/$sourceLength")
+        }
+    }
+
+    /**
+     * 跳过指定字节数。SMB 数据流的 skip 可能一次跳不完，需要循环补齐，
+     * 否则响应体会从错误的偏移开始。
+     */
+    private fun skipFully(inputStream: InputStream, byteCount: Long) {
+        if (byteCount <= 0) {
+            return
+        }
+        var remaining = byteCount
+        try {
+            while (remaining > 0) {
+                val skipped = inputStream.skip(remaining)
+                if (skipped > 0) {
+                    remaining -= skipped
+                } else if (inputStream.read() < 0) {
+                    //已经到文件末尾
+                    break
+                } else {
+                    //skip 返回 0 时退化为读取丢弃，避免死循环
+                    remaining--
+                }
+            }
+        } catch (e: IOException) {
+            AppLog.e(LOG_TAG, "跳过 SMB 数据流失败: 需要跳过=$byteCount, 剩余=$remaining", e)
+        }
     }
 
     private fun getOKResponse(inputStream: InputStream): Response {

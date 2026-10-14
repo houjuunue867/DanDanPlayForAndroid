@@ -40,29 +40,30 @@ object RangeUtils {
         }
         // e.g. "-499"
         if (separatorIndex == 0) {
-            val end = range.substring(1).toLongOrDefault(0L)
-            return if (end <= 0 || end > maxRange) {
-                null
-            } else {
-                0L to end
+            //后缀区间：表示“最后 N 字节”
+            val suffixLength = range.substring(1).toLongOrDefault(0L)
+            if (suffixLength <= 0) {
+                return null
             }
+            val start = (contentLength - suffixLength).coerceAtLeast(0L)
+            return start to maxRange
         }
         // e.g. "500-"
         if (separatorIndex == range.length - 1) {
-            val start = range.substring(0, separatorIndex).toLongOrDefault(0L)
-            return if (start < 0) {
+            val start = range.substring(0, separatorIndex).toLongOrDefault(-1L)
+            return if (start < 0 || start > maxRange) {
                 null
             } else {
                 start to maxRange
             }
         }
         // e.g. "500-999"
-        val start = range.substring(0, separatorIndex).toLongOrDefault(0L)
-        val end = range.substring(separatorIndex + 1).toLongOrDefault(0L)
-        return if (start < 0 || end <= 0 || end > maxRange || start >= end) {
-            null
-        } else {
-            start to end
+        val start = range.substring(0, separatorIndex).toLongOrDefault(-1L)
+        val end = range.substring(separatorIndex + 1).toLongOrDefault(-1L)
+        if (start < 0 || end < 0 || start > maxRange || start > end) {
+            return null
         }
+        //结束位置超过文件末尾时按文件末尾截断
+        return start to end.coerceAtMost(maxRange)
     }
 }
