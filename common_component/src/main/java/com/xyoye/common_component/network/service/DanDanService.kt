@@ -26,6 +26,7 @@ import retrofit2.http.Header
 import retrofit2.http.Headers
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 import retrofit2.http.QueryMap
 
 /**
@@ -120,10 +121,17 @@ interface DanDanService {
     @POST("/api/v2/playhistory")
     suspend fun addPlayHistory(@Body body: RequestBody): CommonJsonData
 
-    @GET("api/v2/login/renew")
+    /**
+     * 校验开发者凭证是否可用。
+     *
+     * 注意：不能使用 /api/v2/login/renew —— 该接口需要已登录用户的 token，
+     * 没有 token 时固定返回 401，会导致自编译包在「开发者认证」里无法保存凭证。
+     * 这里改用同样需要凭证的番剧搜索接口：凭证有效返回 200，无效返回 403。
+     */
+    @GET("api/v2/search/anime")
     suspend fun checkAuthenticate(
         @Header(DeveloperCertificateInterceptor.HEADER_APP_ID) appId: String,
         @Header(DeveloperCertificateInterceptor.HEADER_APP_SECRET) appSecret: String,
-        @Header("X-Auth") authMode: Int
+        @Query("keyword") keyword: String
     ): Response<ResponseBody>
 }

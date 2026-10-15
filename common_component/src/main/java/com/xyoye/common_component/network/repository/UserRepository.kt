@@ -119,6 +119,6 @@ object UserRepository : BaseRepository() {
      */
     suspend fun checkAuthenticate(appId: String, appSecret: String) = request()
         .doGet {
-            Retrofit.danDanService.checkAuthenticate(appId, appSecret, 1)
+            Retrofit.danDanService.checkAuthenticate(appId, appSecret, "test")
         }
 }
