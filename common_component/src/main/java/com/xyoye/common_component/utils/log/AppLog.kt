@@ -3,6 +3,7 @@ package com.xyoye.common_component.utils.log
 import android.content.Context
 import android.os.Build
 import android.os.Environment
+import com.xyoye.common_component.BuildConfig
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
@@ -249,6 +250,7 @@ object AppLog {
         i(TAG, "================== 日志开始 ==================")
         i(TAG, "日志文件: ${logFile.absolutePath}")
         i(TAG, "应用版本: ${appVersion(context)}")
+        i(TAG, "构建版本: ${BuildConfig.BUILD_COMMIT}")
         i(
             TAG,
             "设备信息: ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE}(API ${Build.VERSION.SDK_INT})"

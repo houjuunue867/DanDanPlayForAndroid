@@ -3,8 +3,10 @@ package com.xyoye.user_component.ui.dialog
 import android.app.Activity
 import com.xyoye.common_component.base.BaseActivity
 import com.xyoye.common_component.config.DevelopConfig
+import com.xyoye.common_component.config.AppConfig
 import com.xyoye.common_component.extension.startUrlActivity
 import com.xyoye.common_component.network.repository.UserRepository
+import com.xyoye.common_component.utils.log.AppLog
 import com.xyoye.common_component.utils.SupervisorScope
 import com.xyoye.common_component.weight.ToastCenter
 import com.xyoye.common_component.weight.dialog.BaseBottomDialog
@@ -24,6 +26,10 @@ class DeveloperAuthenticateDialog(
     private val activity: Activity,
     private val onAuthenticate: () -> Unit
 ) : BaseBottomDialog<DialogDeveloperAuthenticateBinding>(activity) {
+
+    companion object {
+        private const val TAG = "DeveloperAuthenticate"
+    }
 
     private lateinit var binding: DialogDeveloperAuthenticateBinding
 
@@ -65,19 +71,42 @@ class DeveloperAuthenticateDialog(
             return
         }
 
+        //备用服务器会把请求改写到自定义域名，排查认证失败时需要知道该开关的状态
+        AppLog.i(
+            TAG,
+            "开始校验凭证: appId=$appId, 备用服务器=${AppConfig.isBackupDomainEnable()}" +
+                "(${AppConfig.getBackupDomain()})"
+        )
+
         SupervisorScope.IO.launch {
             loading(true)
-            val result = UserRepository.checkAuthenticate(appId, appSecret).getOrNull()
+            val result = UserRepository.checkAuthenticate(appId, appSecret)
             loading(false)
-            if (result != null && result.code() == 200) {
-                authenticateSuccess(appId, appSecret)
-                return@launch
-            }
 
-            if (result?.code() == 403) {
-                ToastCenter.showError("认证失败，凭证不被允许访问")
-            } else {
-                ToastCenter.showError("认证过程中发生意外，请稍后重试")
+            val response = result.getOrNull()
+            when {
+                response?.code() == 200 -> {
+                    AppLog.i(TAG, "凭证校验成功")
+                    authenticateSuccess(appId, appSecret)
+                }
+
+                response != null -> {
+                    val code = response.code()
+                    AppLog.e(TAG, "凭证校验失败: HTTP $code")
+                    if (code == 403) {
+                        ToastCenter.showError("认证失败：凭证无效或未被允许访问（HTTP 403）")
+                    } else {
+                        ToastCenter.showError("认证失败：服务器返回 HTTP $code")
+                    }
+                }
+
+                else -> {
+                    val error = result.exceptionOrNull()
+                    AppLog.e(TAG, "凭证校验请求未送达服务器", error)
+                    ToastCenter.showError(
+                        "认证失败：请求未送达服务器（${error?.message ?: "未知错误"}）"
+                    )
+                }
             }
         }
     }

@@ -1,17 +1,18 @@
 # [DanDanPlayForAndroid](https://github.com/xyoye/DanDanPlayForAndroid)
 
-> **个人修改版说明（v4.1.5）**
+> **个人修改版说明（v4.1.6）**
 >
 > 本项目基于 [xyoye/DanDanPlayForAndroid](https://github.com/xyoye/DanDanPlayForAndroid) 修改，遵循 Apache License 2.0。
 >
 > 主要改动：
 > - **修复 SMB 播放中途退出**：播放代理的 Range 响应长度错误（Content-Length 错用了整个文件长度），且多个请求之间会互相关闭对方的数据流，导致播放器读到数据不足而中断
 > - **遥控器快进/快退改为智能动态步长**：按视频时长自适应 + 连按逐级加速 + 边界钳制，并支持媒体快进/快退键
+> - 「开发者认证」失败时提示具体原因（凭证被拒 / 服务器状态码 / 请求未送达服务器），并写入运行日志
 > - 新增运行日志落盘（含崩溃堆栈、播放器状态、SMB 播放代理），并在「设置 → 其它 → 导出运行日志」提供导出入口
 > - 支持非官方签名包配置弹弹play开放平台凭证（构建时内置或应用内弹窗填写）
 > - 构建脚本适配 JDK 17（移除 MaxPermSize、git 信息容错）
 >
-> 完整更新日志见 `change/dandanplay-v4.1.5.txt`
+> 完整更新日志见 `change/dandanplay-v4.1.6.txt`（含 4.1.5 的 SMB 修复等改动）
 >
 > Modifications Copyright (c) 2026 867123403@qq.com
 
