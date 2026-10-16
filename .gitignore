@@ -11,6 +11,7 @@
 dadanplay.jks
 keystore.properties
 /gradle/assemble/developer.properties
+/gradle/assemble/output.properties
 
 #构建产物（每个模块的 build 目录都要忽略，否则会把 APK、.so 一起提交）
 build/
